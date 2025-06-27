@@ -16,37 +16,66 @@ def replace_llama():
     transformers_version = check_version()
     version_list = ['4.37']
     warning_flag = True
-    for version in version_list:
-        if version in transformers_version:
+    for v in version_list:
+        if v in transformers_version:
             warning_flag = False
             break
     if warning_flag:
-        warnings.warn(f"Transformers version {transformers_version} might not be compatible with SnapKV. SnapKV is tested with Transformers version {version_list}.")
-    transformers.models.llama.modeling_llama.LlamaForCausalLM.prepare_inputs_for_generation = prepare_inputs_for_generation_llama_4_37
-    transformers.models.llama.modeling_llama.LlamaFlashAttention2.forward = llama_flash_attn2_forward_4_37
+        warnings.warn(
+            f"Transformers version {transformers_version} might not be compatible "
+            f"with SnapKV. SnapKV is tested with Transformers version {version_list}."
+        )
+
+    mm = transformers.models.llama.modeling_llama
+    mm.LlamaForCausalLM.prepare_inputs_for_generation = prepare_inputs_for_generation_llama_4_37
+
+    if hasattr(mm, "LlamaFlashAttention2"):
+        mm.LlamaFlashAttention2.forward = llama_flash_attn2_forward_4_37
+    else:
+        print("⚠️  LlamaFlashAttention2 not found—skipping that patch.")
+
 
 def replace_mistral():
     transformers_version = check_version()
     version_list = ['4.37']
     warning_flag = True
-    for version in version_list:
-        if version in transformers_version:
+    for v in version_list:
+        if v in transformers_version:
             warning_flag = False
             break
     if warning_flag:
-        warnings.warn(f"Transformers version {transformers_version} might not be compatible with SnapKV. SnapKV is tested with Transformers version {version_list}.")
-    transformers.models.mistral.modeling_mistral.MistralForCausalLM.prepare_inputs_for_generation = prepare_inputs_for_generation_mistral_4_37
-    transformers.models.mistral.modeling_mistral.MistralFlashAttention2.forward = mistral_flash_attn2_forward_4_37
+        warnings.warn(
+            f"Transformers version {transformers_version} might not be compatible "
+            f"with SnapKV. SnapKV is tested with Transformers version {version_list}."
+        )
+
+    mm = transformers.models.mistral.modeling_mistral
+    mm.MistralForCausalLM.prepare_inputs_for_generation = prepare_inputs_for_generation_mistral_4_37
+
+    if hasattr(mm, "MistralFlashAttention2"):
+        mm.MistralFlashAttention2.forward = mistral_flash_attn2_forward_4_37
+    else:
+        print("⚠️  MistralFlashAttention2 not found—skipping that patch.")
+
 
 def replace_mixtral():
     transformers_version = check_version()
     version_list = ['4.37']
     warning_flag = True
-    for version in version_list:
-        if version in transformers_version:
+    for v in version_list:
+        if v in transformers_version:
             warning_flag = False
             break
     if warning_flag:
-        warnings.warn(f"Transformers version {transformers_version} might not be compatible with SnapKV. SnapKV is tested with Transformers version {version_list}.")
-    transformers.models.mixtral.modeling_mixtral.MixtralForCausalLM.prepare_inputs_for_generation = prepare_inputs_for_generation_mixtral_4_37
-    transformers.models.mixtral.modeling_mixtral.MixtralFlashAttention2.forward = mixtral_flash_attn2_forward_4_37
+        warnings.warn(
+            f"Transformers version {transformers_version} might not be compatible "
+            f"with SnapKV. SnapKV is tested with Transformers version {version_list}."
+        )
+
+    mm = transformers.models.mixtral.modeling_mixtral
+    mm.MixtralForCausalLM.prepare_inputs_for_generation = prepare_inputs_for_generation_mixtral_4_37
+
+    if hasattr(mm, "MixtralFlashAttention2"):
+        mm.MixtralFlashAttention2.forward = mixtral_flash_attn2_forward_4_37
+    else:
+        print("⚠️  MixtralFlashAttention2 not found—skipping that patch.")
