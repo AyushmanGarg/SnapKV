@@ -1,17 +1,3 @@
-\begin{abstract}
-Large Language Models (LLMs) have made remarkable progress in processing extensive contexts, with the Key-Value (KV) cache playing a vital role in enhancing their performance. However, the growth of the KV cache in response to increasing input length poses challenges to memory and time efficiency. To address this problem, this paper introduces \kv, an innovative and fine-tuning-free approach that efficiently minimizes KV cache size while still delivering comparable performance in real-world applications.
-We discover that each attention head in the model consistently focuses on specific prompt attention features during generation. Meanwhile, this robust pattern can be obtained from an `observation' window located at the end of the prompts. Drawing on this insight, \kv automatically compresses KV caches by selecting clustered important KV positions for each attention head. Our approach significantly reduces the growing computational overhead and memory footprint when processing long input sequences. Specifically, \kv achieves a consistent decoding speed with a 3.6x increase in generation speed and an 8.2x enhancement in memory efficiency compared to baseline when processing inputs of 16K tokens. At the same time, it maintains comparable performance to baseline models across 16 long sequence datasets. Moreover, \kv can process up to 380K context tokens on a single A100-80GB GPU using HuggingFace implementation with minor changes, exhibiting only a negligible accuracy drop in the Needle-in-a-Haystack test. Further comprehensive studies suggest \kv's potential for practical applications. Our code is available at ~\url{https://github.com/FasterDecoding/SnapKV}.
-\end{abstract}
-\section{Introduction}
-
-\begin{figure}[ht]
-    \centering\includegraphics[width=0.65\textwidth]{figures/illustration.pdf}
-        \caption{The graph shows the simplified workflow of \kv, where the orange area represents the group of positions per head clustered and selected by \kv. These clustered features are then used to form a new Key-Value pair concatenated with the tokens in the observation window (denoted as `Window'). Together, the selected prefix and observation windows constitute the new KV cache utilized for the generation. 
-    }
-    \label{fig: algo}
-\end{figure}
-Many inspiring works have successfully expanded LLMs to handle longer contexts, overcoming the difficulties in context maintenance and attention mechanism scalability, such as GPT-4~\cite{achiam2023gpt} and Command-R~\cite{coherecommandr} with context length 128K, Claude-3~\cite{anthropic2024claude3} with 200K, and Gemini-Pro-1.5 with 1M~\cite{reid2024gemini}. Despite their impressive capabilities, LLMs still face significant challenges when dealing with long context inputs. Specifically, the KV caches in attention calculation become an obstacle in efficiently processing long context. During inference time, as input length increases, the decoding speed per step grows linearly due to the computation for attention across past KVs. Moreover, the large KV cache created during prompting requires significant on-chip and off-chip memory, increasing hardware demands and limiting model scalability.
-
 There are many perspectives to mitigate these problems, including KV cache eviction during token generation~\cite{xiao2023efficient, zhang2024h2o, liu2024scissorhands, ge2023model}. However, most of these methods lack a detailed evaluation of the generated context in a long-context setting. Moreover, they mainly focus on optimizing the KV cache appended during generation steps, while overlooking the realistic problem of compressing KV cache for input sequences, which is typically the bottleneck in memory efficiency. In practical applications such as chatbots and agents, where inputs can be multi-turn conversations, extensive articles or codebases~\cite{achiam2023gpt, liu2021lifelong, bairi2023codeplan}, input sizes are often much larger than the sizes of generated responses, resulting in significant overhead. Additional challenge lies in compressing such vast inputs without losing crucial information for accurate generation, especially in scenarios with various noisy contexts.
 
 In our paper, we identify the patterns of these important prompt attention features during generation. To validate the robustness of this finding, we also design a thorough set of experiments across diverse inputs in terms of length, format, and content. Based on our observations, we derive an innovative and intuitive method, \kv, which can effectively compress the KV cache for long sequence inputs without compromising the model's accuracy. Our contributions are as follows:
@@ -291,19 +277,7 @@ We perform an ablation study to assess the impact of our pooling technique, a st
 \specialrule{1pt}{2pt}{10pt}\specialrule{1pt}{2pt}{2pt}
 
 
-\multirow{5}{*}{\rotatebox[origin=c]{90}{\fontsize{18}{100}\selectfont Mixtral}}
-
-& \cellcolor{cyan!10}~~~All KV & \cellcolor{cyan!10}{26.81} & \cellcolor{cyan!10}\textbf{37.06} & \cellcolor{cyan!10}51.55 & \cellcolor{cyan!10}47.77 & \cellcolor{cyan!10}32.46 & \cellcolor{cyan!10}\textbf{26.59} & \cellcolor{cyan!10}\textbf{34.25} & \cellcolor{cyan!10}\textbf{26.05} & \cellcolor{cyan!10}27.91 & \cellcolor{cyan!10}76.0 & \cellcolor{cyan!10}90.57 & \cellcolor{cyan!10}46.98 & \cellcolor{cyan!10}5.5 & \cellcolor{cyan!10}100.0 & \cellcolor{cyan!10}\textbf{69.07} & \cellcolor{cyan!10}69.65 \\
-\cline{2-18}
-
-& \cellcolor{cyan!10}~~~\kv: 1024 & \cellcolor{cyan!10}26.01 & \cellcolor{cyan!10}34.65 & \cellcolor{cyan!10}51.58 & \cellcolor{cyan!10}\textbf{48.23} & \cellcolor{cyan!10}32.67 & \cellcolor{cyan!10}25.92 & \cellcolor{cyan!10}27.77 & \cellcolor{cyan!10}25.0 & \cellcolor{cyan!10}27.25 & \cellcolor{cyan!10}74.5 & \cellcolor{cyan!10}90.42 & \cellcolor{cyan!10}46.48 & \cellcolor{cyan!10}5.5 & \cellcolor{cyan!10}99.5 & \cellcolor{cyan!10}69.02 & \cellcolor{cyan!10}68.98 \\
-
-& \cellcolor{cyan!10}~~~\kv: 2048 & \cellcolor{cyan!10}\textbf{27.12} & \cellcolor{cyan!10}36.9 & \cellcolor{cyan!10}51.91 & \cellcolor{cyan!10}47.46 & \cellcolor{cyan!10}33.23 & \cellcolor{cyan!10}26.27 & \cellcolor{cyan!10}30.19 & \cellcolor{cyan!10}25.84 & \cellcolor{cyan!10}27.8 & \cellcolor{cyan!10}\textbf{76.0} & \cellcolor{cyan!10}90.24 & \cellcolor{cyan!10}46.31 & \cellcolor{cyan!10}5.5 & \cellcolor{cyan!10}100.0 & \cellcolor{cyan!10}68.72 & \cellcolor{cyan!10}\textbf{70.01} \\
-
-& \cellcolor{cyan!10}~~~\kv: 4096 & \cellcolor{cyan!10}26.46 & \cellcolor{cyan!10}37.03 & \cellcolor{cyan!10}\textbf{52.62} & \cellcolor{cyan!10}47.71 & \cellcolor{cyan!10}\textbf{33.35} & \cellcolor{cyan!10}26.45 & \cellcolor{cyan!10}32.64 & \cellcolor{cyan!10}25.87 & \cellcolor{cyan!10}\textbf{27.94} & \cellcolor{cyan!10}75.5 & \cellcolor{cyan!10}\textbf{90.71} & \cellcolor{cyan!10}\textbf{47.14} & \cellcolor{cyan!10}5.5 & \cellcolor{cyan!10}\textbf{100.0} & \cellcolor{cyan!10}68.81 & \cellcolor{cyan!10}69.56 \\
-
-& \cellcolor{cyan!10}~~~H2O: 4096 & \cellcolor{cyan!10}20.45 & \cellcolor{cyan!10}32.09 & \cellcolor{cyan!10}48.02 & \cellcolor{cyan!10}34.76 & \cellcolor{cyan!10}25.69 & \cellcolor{cyan!10}16.5 & \cellcolor{cyan!10}29.76 & \cellcolor{cyan!10}23.53 & \cellcolor{cyan!10}26.84 & \cellcolor{cyan!10}74.5 & \cellcolor{cyan!10}90.24 & \cellcolor{cyan!10}47.1 & \cellcolor{cyan!10}\textbf{7.06} & \cellcolor{cyan!10}99.42 & \cellcolor{cyan!10}64.91 & \cellcolor{cyan!10}63.52 \\
-
+\multirow{5}{*}{\rotatebox[origin=c]{90}{\fontsize{18}{100}\selectfont Mixtral}
 
 
 \specialrule{1pt}{2pt}{0pt}
@@ -329,61 +303,16 @@ To further assess the performance of \kv, we conduct experiments using Cohere's 
 
 \subsubsection{Needle-in-a-Haystack}
 In previous experiments \cite{anthropic2023needlesprompt}, it was noted that Needle-in-a-Haystack \cite{kamradt2023needle} evaluation was heavily influenced by the specific context used. To address this issue, we modify the evaluation by permuting context compositions for each length and depth combination. This approach, which we ran eight times, yielded more robust results. We observe a slight decrease in scores across all models tested under this setting compared to the original setup with no context shuffling. For simplicity, we aggregated the scores across all depths and lengths for the baseline model and the one with \kv. As seen in Table \ref{table:commandr_needles}, applying \kv to \texttt{Command-R} shows no degradation in performance, even with a 128k sequence length resulting in 32x compression of KV cache.
-
-\begin{table}[h]
-\centering
-\caption{Needles-in-a-Haystack Test Results}
-\begin{tabular}{lccc}
-\toprule
-\text{Model} & \texttt{Command-R} & \texttt{Command-R} + \kv & \text{\% Difference} \\
-\midrule
-Score & 9.866 & 9.819 & -0.5\% \\
-\bottomrule
-\end{tabular}
-\label{table:commandr_needles}
-\end{table}
-\subsubsection{Retrieval Augmented Generation (RAG)}
 We assess \kv's effectiveness in RAG tasks, which are more intricate than synthetic long-context tasks like Needle-in-a-Haystack and closer to real use cases compared to tasks like NarrativeQA. RAG tasks require selecting pertinent documents from an indexed corpus based on the given prompt. An expanded context window enables the retrieval of additional documents, which can lead to improved model performance. However, this also increases memory requirements and latency, highlighting the delicate balance between retrieval scope and system resources. \kv proves beneficial in these tasks by reducing memory usage while enhancing the performance. We evaluated \kv's impact on RAG tasks with sequence lengths up to approximately 40,000 tokens.
 
 \paragraph{RAG Citation}
 We begin by assessing \kv's impact on the model's ability to select relevant documents, a crucial aspect of effective RAG. We evaluate on an internal benchmarks from Cohere. The setup of the benchmark is as follow: for each prompt, we gathered a set of topic-related documents that included ground truth answers along with a sample of negative documents ensuring a total of 100 documents per prompt. We measured the model's performance by calculating the F1-score when the model successfully retrieved the ground truth documents. The dataset employed in this experiment spanned context lengths from 20,000 to 40,000 tokens. Given our KV cache size of 4096, we achieve a compression of 5-10x. As observed in Table \ref{table:commandr_cite}, \kv demonstrates a remarkable ability to retain nearly 98.8\% of \texttt{Command-R}'s performance.
-\begin{table}[h]
-\centering
-\caption{RAG Test Results}
-\begin{tabular}{lcc}
-\toprule
-\text{Evaluation Task} & \text{Metric} & \text{\% Difference} \\
-\midrule
-RAG Citation & F1 score & -1.2\% \\
-RAG End-to-end & F1 score & -2.1\% \\
-\bottomrule
-\end{tabular}
-\label{table:commandr_cite}
-\end{table}
-\paragraph{Generation} \label{Generation_Section}
 As the quality of generation is important to a model's RAG capability, we evaluate \texttt{Command-R} on lost-in-the-middle and generation quality. Lost-in-the-middle is aimed to analyze whether the performance of the model varies when altering the position of ground-truth information in the context \cite{lostinthemiddle}. The latter is a relatively simple metric where we define the accuracy of the model to be the proportion of the ground-truth answer phrase appearing in model's response. We conducted 3 experiments with 30, 100 and 200 sampled documents for each ground-truth. We repeat each experiment 3 times and insert the relevant documents at beginning, middle and end of the context to test \kv's robustness.We report the relative difference to the baseline model. The dataset used in this phase is based on the bioasq dataset \cite{bioasq} with RAG-style formulation from Cohere \cite{cohererag}.
 
 \begin{table}[ht]
 \centering
 \caption{RAG Generation Test Results on bioasq}
 \label{table:commandr_generation}
-\begin{tabular}{@{}cccc@{}}
-\toprule
-Number of Documents & Approximate Context Length & Ground Truth Position & \% Difference \\ \midrule
-\multirow{4}{*}{30}  & \multirow{4}{*}{8k}  & 0  & -1.8\% \\
-                     &                      & 14 & 0\%   \\
-                     &                      & 30 & -3.4\% \\
-                     &                      & Avg & -1.7\% \\ \midrule
-\multirow{4}{*}{100} & \multirow{4}{*}{14k} & 0  & -1.2\% \\
-                     &                      & 14 & +0.9\% \\
-                     &                      & 30 & -0.9\% \\
-                     &                      & Avg & -0.6\% \\ \midrule
-\multirow{4}{*}{200} & \multirow{4}{*}{24k} & 0  & +4.9\% \\
-                     &                      & 14 & +4.9\% \\
-                     &                      & 30 & +6.4\% \\
-                     &                      & Avg & +5.4\% \\ \bottomrule
-\end{tabular}
-\smallskip
 \small
 \textit{Note:} For each number of sampled documents, we report the approximate context length and the difference from the baseline at each ground-truth position.
 \end{table}
@@ -392,21 +321,6 @@ As Table \ref{table:commandr_generation} shows, \kv is robust in terms of genera
 \paragraph{End-to-End RAG} 
 To assess \kv's robustness in a comprehensive manner, we integrated it into a complete RAG pipeline. This evaluation starts by retrieving 200 documents using Cohere's embedding service \cite{cohereembed} in response to a given query. These documents were then re-ranked using Cohere's re-ranking model \cite{coherererank}, which filtered out half of the candidates, resulting in a list of 100 documents. We prompt \texttt{Command-R} using this list and calculate the accuracy metric as described in Section \ref{Generation_Section}. We employed a modified version of the HotpotQA dataset \cite{yang2018hotpotqa} and leveraged Wikipedia as the document source. This setup introduces a more challenging set of documents as all documents, relevant or not, are semantically similar.
 Table \ref{table:commandr_cite} showcases \kv's robust performance in a production-like RAG setting. With an average dataset length of around 16,000 tokens, the KV cache benefits from a compression ratio of approximately 4x.
-
-
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=0.8\textwidth]{figures/speed_vs_prompt_length.pdf}
-    \caption{Comparison of generation speed (ms/token). The baseline is the Huggingface implementation of naive decoding.}
-    \label{fig: medusa}
-\end{figure}
-\subsection{Case Study: Compatibility with Parallel Decoding}
-
-In this section, we provide a novel perspective on employing KV cache compression synergistically with parallel decoding~\cite{stern2018blockwise, leviathan2023fast, chen2023accelerating, miao2023specinfer, zhang2024recurrent}. Parallel decoding leverages a lightweight model or an adaptor to draft initial tokens, which are subsequently verified by larger LLMs. This strategy effectively reduces memory overhead, a critical concern given the autoregressive nature of LLMs that renders them more memory-intensive than computationally demanding. Specifically, in LLMs, each decoding step involves generating a single token, with the transfer of weights between High Bandwidth Memory (HBM) and cache contributing to significant overhead~\cite{dao2022flashattention,dao2023flashattention}.
-
-Our investigation incorporates \kv with \texttt{Medusa}~\cite{cai2024medusa}\footnote{\url{https://github.com/FasterDecoding/Medusa}}, a cutting-edge parallel decoding framework that utilizes multiple classifiers and tree attention mechanisms for drafting tokens, subsequently verified by LLMs. One of the challenges identified is the issue of speculative decoding in processing long sequences since generating multiple tokens per decoding step introduces computational bottlenecks during long sequence processing, such as query-key matrix multiplication tiling~\cite{dao2023flash}. By maintaining a constant size for the KV cache associated with prompts during generation, \kv enhances generation efficiency.
-
-Empirical results shown in Figure~\ref{fig: medusa} highlight the performance across various prompt lengths, with \texttt{Mistral-7B-Instruct-v0.2}\footnote{\href{https://huggingface.co/text-generation-inference/Mistral-7B-Instruct-v0.2-medusa/tree/main}{TGI trained \texttt{Medusa} heads}} undergoing a maximum of 128 generation steps unless preemptively halted. The experiments utilized a subset of the QASPER~\cite{dasigi2021dataset}, with a fixed prompt instructing the LLM to summarize the paper. The truncation strategy adopted aligns with LongBench~\cite{bai2023longbench} standards, by removing the context in the middle to achieve the desired sequence length for benchmarking.
 
 The findings indicate a slowdown in \texttt{Medusa}'s performance as sequence lengths extend, a challenge effectively mitigated by \kv's intervention, which achieved a 1.3x speedup for sequences with 10k length compared to \texttt{Medusa} and a 2.2x speedup compared to the native decoding. This improvement underscores the potential of combining KV cache compression with parallel decoding frameworks to enhance LLM efficiency, particularly in long-context scenarios.
 \section{Discussions}
