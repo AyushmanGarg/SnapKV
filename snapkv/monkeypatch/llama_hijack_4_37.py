@@ -145,7 +145,13 @@ def prepare_inputs_for_generation_llama(
         if isinstance(past_key_values, Cache):
             cache_length = past_key_values.get_seq_length()
             past_length = past_key_values.seen_tokens
-            max_cache_length = past_key_values.get_max_length()
+        
+            # guard against missing get_max_length()
+            if hasattr(past_key_values, "get_max_length"):
+                max_cache_length = past_key_values.get_max_length()
+            else:
+                # fallback: assume cache can grow to current length
+                max_cache_length = cache_length
         else:
             # cache_length = past_length = past_key_values[0][0].shape[2]
             # max_cache_length = None
